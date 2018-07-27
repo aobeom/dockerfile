@@ -1,0 +1,69 @@
+version: "3"
+services:
+  redis:
+    build:
+      context: ./
+      dockerfile: redis-apline/Dockerfile
+    image: redis:latest
+    container_name: redis
+    volumes:
+      - /usr/mycrond/redis:/usr/local/redis
+    networks:
+      - webnet
+    ports:
+      - "127.0.0.1:6379:6379"
+  mongo:
+    build:
+      context: ./
+      dockerfile: mongo-apline/Dockerfile
+    image: mongo:latest
+    container_name: mongo
+    volumes:
+      - /usr/mycrond/mongodb:/usr/local/mongodb
+    networks:
+      - webnet
+    ports:
+      - "127.0.0.1:27017:27017"
+  php-fpm:
+    build:
+      context: ./
+      dockerfile: php-fpm-debian/Dockerfile
+    image: php-fpm:beta
+    container_name: php-fpm
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - /var/wwwroot/wordpress/:/var/wwwroot/wordpress/
+      - /usr/mycrond/phpfpm/etc:/usr/local/php/etc
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - webnet
+  uwsgi:
+    build:
+      context: ./
+      dockerfile: uwsgi-alpine/Dockerfile
+    image: uwsgi:latest
+    container_name: uwsgi
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - /var/wwwroot/tools/:/var/wwwroot/tools/
+      - /etc/localtime:/etc/localtime:ro
+      - /media/:/media/
+      - /videos/:/videos/
+      - /usr/local/ffmpeg/:/usr/local/ffmpeg/
+    depends_on:
+      - redis
+      - mongo
+    links:
+      - redis
+    command: /var/wwwroot/tools/uwsgi.ini
+    networks:
+      - webnet
+networks:
+    webnet:
+      driver: bridge
+      ipam:
+        driver: default
+        config:
+          - subnet: 172.20.0.0/16
